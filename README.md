@@ -14,6 +14,52 @@ This package is stateless by design:
 npm install @distlang/client
 ```
 
+## Overview
+
+Distlang has two main public surfaces:
+
+- `dash`: the browser UI for signing in, viewing dashboards, and managing your API token
+- `@distlang/client`: the JavaScript package for calling Distlang APIs from Node, workers, and other apps
+
+If you need a token for `@distlang/client`, sign in through `dash` and open the auth page. The dashboard lets you create, rotate, and revoke your API token for `api.distlang.com`.
+
+Once issued, pass that token into this package. For app instrumentation, the higher-level metrics recorder is usually the simplest way to start:
+
+```js
+import { createDistlangClient } from "@distlang/client";
+
+const client = createDistlangClient();
+
+const metrics = client.metrics.createRecorder({
+  accessToken: process.env.DISTLANG_ACCESS_TOKEN,
+  metricSet: "app-echo-metrics",
+  definitions: {
+    requestCount: {
+      kind: "counter",
+      description: "Requests handled",
+      unit: "requests",
+      labels: ["route", "method", "status"],
+    },
+    latencyMs: {
+      kind: "histogram",
+      description: "Request latency",
+      unit: "ms",
+      labels: ["route", "method", "status"],
+    },
+  },
+});
+
+metrics.requestCount.inc({ route: "/echo/:text", method: "GET", status: "200" });
+metrics.latencyMs.observe(42, { route: "/echo/:text", method: "GET", status: "200" });
+
+await metrics.flush();
+```
+
+Public docs:
+
+- Store APIs: `https://api.distlang.com/docs`
+- Auth APIs: `https://auth.distlang.com/docs`
+
 ## Quick Start
 
 ```js
