@@ -91,6 +91,26 @@ export interface MetricRow {
   values?: number[];
 }
 
+export interface CounterMetricRecorder {
+  inc(valueOrLabels?: number | Record<string, string>, maybeLabels?: Record<string, string>): void;
+}
+
+export interface HistogramMetricRecorder {
+  observe(value: number, labels?: Record<string, string>): void;
+}
+
+export interface MetricsRecorderOptions {
+  accessToken: string;
+  metricSet: string;
+  definitions: Record<string, MetricDefinition>;
+  windowMs?: number;
+}
+
+export interface MetricsRecorder {
+  flush(): Promise<void>;
+  [metricName: string]: CounterMetricRecorder | HistogramMetricRecorder | (() => Promise<void>) | unknown;
+}
+
 export interface AuthClient {
   exchangeCLIAuthCode(input: ExchangeCLIAuthCodeInput): Promise<Record<string, unknown>>;
   refresh(refreshToken: string): Promise<Record<string, unknown>>;
@@ -128,6 +148,7 @@ export interface MetricsClient {
     ensure(accessToken: string, metricSet: string, definitions: Record<string, MetricDefinition>): Promise<void>;
     appendRows(accessToken: string, metricSet: string, rows: MetricRow[]): Promise<void>;
   };
+  createRecorder(options: MetricsRecorderOptions): MetricsRecorder;
 }
 
 export interface DeploymentsClient {
@@ -147,6 +168,7 @@ export declare function createDistlangClient(config?: ClientConfig): DistlangCli
 export declare function createAuthClient(config?: ClientConfig): AuthClient;
 export declare function createObjectDBClient(config?: ClientConfig): ObjectDBClient;
 export declare function createMetricsClient(config?: ClientConfig): MetricsClient;
+export declare function createMetricsRecorder(metricsClient: MetricsClient, options: MetricsRecorderOptions): MetricsRecorder;
 export declare function createDeploymentsClient(config?: ClientConfig): DeploymentsClient;
 
 export declare const DEFAULT_AUTH_BASE_URL: string;

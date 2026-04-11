@@ -6,6 +6,7 @@ import {
   createDeploymentsClient,
   createDistlangClient,
   createMetricsClient,
+  createMetricsRecorder,
   createObjectDBClient,
   DEFAULT_AUTH_BASE_URL,
   DEFAULT_STORE_BASE_URL,
@@ -193,6 +194,154 @@ test("metrics client writes metric set metadata and rows", async () => {
       body: '{"rows":[{"ts":"2026-04-10T12:00:00Z","data":{"windowStart":"2026-04-10T12:00:00Z","metric":"requestCount","kind":"counter","count":1,"sum":1,"labels":{"route":"/"}}}]}',
     },
   ]);
+});
+
+test("metrics client createRecorder ensures once and flushes aggregated rows", async () => {
+  const calls = [];
+  const client = createMetricsClient({
+    fetch: createFetch(async (request) => {
+      calls.push({
+        method: request.method,
+        url: request.url,
+        body: request.method === "GET" ? null : await request.text(),
+      });
+      return Response.json({ ok: true });
+    }),
+  });
+
+  const recorder = client.createRecorder({
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    definitions: {
+      echoReqCount: {
+        kind: "counter",
+        description: "Number of echo requests handled",
+        unit: "requests",
+        labels: ["route", "method", "status"],
+      },
+    },
+  });
+
+  recorder.echoReqCount.inc({ route: "/echo/:text", method: "GET", status: "200" });
+  recorder.echoReqCount.inc(2, { route: "/echo/:text", method: "GET", status: "200" });
+
+  assert.equal(calls.length, 0);
+  await recorder.flush();
+  assert.equal(calls.length, 3);
+  assert.equal(calls[0].method, "PUT");
+  assert.equal(calls[1].method, "PUT");
+  assert.equal(calls[2].method, "POST");
+
+  const payload = JSON.parse(calls[2].body);
+  assert.equal(payload.rows.length, 1);
+  assert.equal(payload.rows[0].data.metric, "echoReqCount");
+  assert.equal(payload.rows[0].data.count, 2);
+  assert.equal(payload.rows[0].data.sum, 3);
+
+  await recorder.flush();
+  assert.equal(calls.length, 3);
+});
+
+test("metrics recorder preserves histogram samples", async () => {
+  const appended = [];
+  const recorder = createMetricsRecorder({
+    metricSets: {
+      async ensure() {},
+      async appendRows(_accessToken, _metricSet, rows) {
+        appended.push(rows);
+      },
+    },
+  }, {
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    definitions: {
+      latencyMs: {
+        kind: "histogram",
+        description: "Latency",
+        unit: "ms",
+        labels: ["route"],
+      },
+    },
+  });
+
+  recorder.latencyMs.observe(42, { route: "/echo/:text" });
+  recorder.latencyMs.observe(18, { route: "/echo/:text" });
+  await recorder.flush();
+
+  assert.equal(appended.length, 1);
+  assert.equal(appended[0].length, 1);
+  assert.deepEqual(appended[0][0].values, [42, 18]);
+  assert.equal(appended[0][0].count, 2);
+  assert.equal(appended[0][0].sum, 60);
+});
+
+test("metrics recorder validates labels", async () => {
+  const recorder = createMetricsRecorder({
+    metricSets: {
+      async ensure() {},
+      async appendRows() {},
+    },
+  }, {
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    definitions: {
+      echoReqCount: {
+        kind: "counter",
+        description: "Requests",
+        unit: "requests",
+        labels: ["route", "status"],
+      },
+    },
+  });
+
+  assert.throws(
+    () => recorder.echoReqCount.inc({ route: "/", method: "GET" }),
+    /missing label: status/,
+  );
+  assert.throws(
+    () => recorder.echoReqCount.inc({ route: "/", status: "200", extra: "x" }),
+    /unexpected label: extra/,
+  );
+});
+
+test("metrics recorder flush waits for lazy ensure before append", async () => {
+  const order = [];
+  let releaseEnsure;
+  const ensureDone = new Promise((resolve) => {
+    releaseEnsure = resolve;
+  });
+
+  const recorder = createMetricsRecorder({
+    metricSets: {
+      async ensure() {
+        order.push("ensure:start");
+        await ensureDone;
+        order.push("ensure:end");
+      },
+      async appendRows() {
+        order.push("append");
+      },
+    },
+  }, {
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    definitions: {
+      echoReqCount: {
+        kind: "counter",
+        description: "Requests",
+        unit: "requests",
+        labels: [],
+      },
+    },
+  });
+
+  recorder.echoReqCount.inc();
+  const flushPromise = recorder.flush();
+  order.push("flush:waiting");
+  releaseEnsure();
+  await flushPromise;
+
+  assert.deepEqual(order, ["ensure:start", "flush:waiting", "ensure:end", "append"]);
 });
 
 test("deployments client lists and creates deployments", async () => {

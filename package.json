@@ -1,6 +1,6 @@
 {
   "name": "@distlang/client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "JavaScript client for Distlang public APIs",
   "type": "module",
   "main": "./src/index.js",

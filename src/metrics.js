@@ -1,4 +1,5 @@
 import { createHTTPClient, encodePathPart, queryOptions, requestJSON } from "./http.js";
+import { createMetricsRecorder } from "./metrics_recorder.js";
 
 export function createMetricsClient(config = {}) {
   const http = createHTTPClient(config);
@@ -83,6 +84,10 @@ export function createMetricsClient(config = {}) {
           errorPrefix: "metrics request",
         });
       },
+    },
+
+    createRecorder(options = {}) {
+      return createMetricsRecorder(this, options);
     },
   };
 }

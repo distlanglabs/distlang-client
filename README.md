@@ -54,6 +54,11 @@ Defaults:
 - `createMetricsClient(config)`
 - `createDeploymentsClient(config)`
 
+## Examples
+
+- `examples/metrics-recorder.js`: higher-level app instrumentation with `client.metrics.createRecorder(...)`
+- `examples/metrics-low-level.js`: direct low-level metrics query client usage
+
 ### Auth
 
 ```js
@@ -120,6 +125,36 @@ await metrics.metricSets.appendRows(accessToken, "simpleapp-metrics", [
   },
 ]);
 ```
+
+Higher-level app instrumentation:
+
+```js
+const metrics = client.metrics.createRecorder({
+  accessToken,
+  metricSet: "app-echo-metrics",
+  definitions: {
+    echoReqCount: {
+      kind: "counter",
+      description: "Number of echo requests handled",
+      unit: "requests",
+      labels: ["route", "method", "status"],
+    },
+    latencyMs: {
+      kind: "histogram",
+      description: "Echo request latency",
+      unit: "ms",
+      labels: ["route", "method", "status"],
+    },
+  },
+});
+
+metrics.echoReqCount.inc({ route: "/echo/:text", method: "GET", status: "200" });
+metrics.latencyMs.observe(42, { route: "/echo/:text", method: "GET", status: "200" });
+
+await metrics.flush();
+```
+
+The recorder buffers writes in memory, ensures the metric set lazily on first use, and flushes all buffered rows when you call `flush()`.
 
 ### Deployments
 
