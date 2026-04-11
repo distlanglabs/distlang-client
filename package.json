@@ -1,0 +1,41 @@
+{
+  "name": "@distlang/client",
+  "version": "0.1.0",
+  "description": "JavaScript client for Distlang public APIs",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "node --test",
+    "pack:check": "npm pack --dry-run"
+  },
+  "keywords": [
+    "distlang",
+    "client",
+    "api",
+    "objectdb",
+    "metrics"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/distlanglabs/distlang-client.git"
+  },
+  "homepage": "https://github.com/distlanglabs/distlang-client#readme",
+  "bugs": {
+    "url": "https://github.com/distlanglabs/distlang-client/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT"
+}
