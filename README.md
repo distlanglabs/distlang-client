@@ -105,6 +105,45 @@ Defaults:
 - `examples/metrics-recorder.js`: higher-level app instrumentation with `client.metrics.createRecorder(...)`
 - `examples/metrics-low-level.js`: direct low-level metrics query client usage
 
+## Release
+
+This repo currently uses a manual release flow.
+
+1. Update `package.json` to the next version.
+2. Refresh the lockfile:
+
+```bash
+npm install --package-lock-only
+```
+
+3. Verify the package locally:
+
+```bash
+npm run release
+```
+
+4. Commit and push the release version:
+
+```bash
+git add package.json package-lock.json
+git commit -m "release 0.1.2"
+git push origin main
+```
+
+5. Publish to npm:
+
+```bash
+npm run publish
+```
+
+6. Create a GitHub release tag:
+
+```bash
+gh release create v0.1.2 --title "v0.1.2"
+```
+
+You can swap `0.1.2` for the version you are releasing.
+
 ### Auth
 
 ```js

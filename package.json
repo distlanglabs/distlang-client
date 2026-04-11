@@ -17,7 +17,9 @@
   "scripts": {
     "test": "node --test",
     "check": "node --test",
-    "pack:check": "npm pack --dry-run"
+    "pack:check": "npm pack --dry-run",
+    "release": "npm test && npm run pack:check",
+    "publish": "npm publish --access public --ignore-scripts"
   },
   "keywords": [
     "distlang",
