@@ -86,6 +86,20 @@ const client = createDistlangClient({
 });
 ```
 
+If you already have a Worker binding or custom request transport, use the fetcher-backed constructor and keep the rest of the client API the same:
+
+```js
+import { createDistlangClientWithFetcher } from "@distlang/client";
+
+const client = createDistlangClientWithFetcher(
+  (request) => env.DISTLANG_STORE.fetch(request),
+  {
+    authBaseURL: "https://auth.distlang.com",
+    storeBaseURL: "https://api.distlang.com",
+  },
+);
+```
+
 Defaults:
 
 - `authBaseURL`: `https://auth.distlang.com`
@@ -95,6 +109,7 @@ Defaults:
 ## API Surface
 
 - `createDistlangClient(config)`
+- `createDistlangClientWithFetcher(fetcher, config)`
 - `createAuthClient(config)`
 - `createObjectDBClient(config)`
 - `createMetricsClient(config)`
@@ -126,7 +141,7 @@ npm run release
 
 ```bash
 git add package.json package-lock.json
-git commit -m "release 0.1.2"
+git commit -m "release 0.1.3"
 git push origin main
 ```
 
@@ -139,10 +154,10 @@ npm run publish
 6. Create a GitHub release tag:
 
 ```bash
-gh release create v0.1.2 --title "v0.1.2"
+gh release create v0.1.3 --title "v0.1.3"
 ```
 
-You can swap `0.1.2` for the version you are releasing.
+You can swap `0.1.3` for the version you are releasing.
 
 ### Auth
 

@@ -5,6 +5,7 @@ import {
   createAuthClient,
   createDeploymentsClient,
   createDistlangClient,
+  createDistlangClientWithFetcher,
   createMetricsClient,
   createMetricsRecorder,
   createObjectDBClient,
@@ -39,6 +40,33 @@ test("createDistlangClient wires default clients", async () => {
   assert.deepEqual(seen, [
     `${DEFAULT_AUTH_BASE_URL}/auth/whoami`,
     `${DEFAULT_STORE_BASE_URL}/objectdb/v1/buckets`,
+  ]);
+});
+
+test("createDistlangClientWithFetcher routes auth and store requests through the supplied fetcher", async () => {
+  const seen = [];
+  const client = createDistlangClientWithFetcher(createFetch(async (request) => {
+    seen.push(request.url);
+    if (request.url === "https://auth.example.com/auth/whoami") {
+      return Response.json({ user: { email: "ada@example.com" }, token: { scope: "user" } });
+    }
+    if (request.url === "https://api.example.com/objectdb/v1/buckets") {
+      return Response.json({ ok: true, buckets: [] });
+    }
+    return new Response("not found", { status: 404 });
+  }), {
+    authBaseURL: "https://auth.example.com",
+    storeBaseURL: "https://api.example.com",
+  });
+
+  const whoami = await client.auth.whoAmI("access-token");
+  const buckets = await client.objectdb.buckets.list("access-token");
+
+  assert.equal(whoami.user.email, "ada@example.com");
+  assert.deepEqual(buckets.buckets, []);
+  assert.deepEqual(seen, [
+    "https://auth.example.com/auth/whoami",
+    "https://api.example.com/objectdb/v1/buckets",
   ]);
 });
 
@@ -240,6 +268,43 @@ test("metrics client createRecorder ensures once and flushes aggregated rows", a
 
   await recorder.flush();
   assert.equal(calls.length, 3);
+});
+
+test("createDistlangClientWithFetcher recorder flushes through supplied fetcher", async () => {
+  const calls = [];
+  const client = createDistlangClientWithFetcher(createFetch(async (request) => {
+    calls.push({
+      method: request.method,
+      url: request.url,
+      body: request.method === "GET" ? null : await request.text(),
+    });
+    return Response.json({ ok: true });
+  }), {
+    storeBaseURL: "https://api.example.com",
+  });
+
+  const recorder = client.metrics.createRecorder({
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    definitions: {
+      requestCount: {
+        kind: "counter",
+        description: "Requests served",
+        unit: "requests",
+        labels: ["route"],
+      },
+    },
+  });
+
+  recorder.requestCount.inc({ route: "/" });
+  await recorder.flush();
+
+  assert.equal(calls.length, 3);
+  assert.deepEqual(calls.map((entry) => entry.url), [
+    "https://api.example.com/metrics/v1/metricsets/app-echo-metrics",
+    "https://api.example.com/metrics/v1/metricsets/app-echo-metrics/metadata",
+    "https://api.example.com/metrics/v1/metricsets/app-echo-metrics/rows",
+  ]);
 });
 
 test("metrics recorder preserves histogram samples", async () => {

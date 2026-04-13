@@ -6,7 +6,7 @@ export function createObjectDBClient(config = {}) {
   return {
     async status(accessToken) {
       return requestJSON("GET", http.storeBaseURL, "/objectdb/v1", {
-        fetch: http.fetch,
+        fetch: http.storeFetch,
         accessToken,
         errorPrefix: "objectdb request",
       });
@@ -15,7 +15,7 @@ export function createObjectDBClient(config = {}) {
     buckets: {
       async list(accessToken) {
         return requestJSON("GET", http.storeBaseURL, "/objectdb/v1/buckets", {
-          fetch: http.fetch,
+          fetch: http.storeFetch,
           accessToken,
           errorPrefix: "objectdb request",
         });
@@ -23,7 +23,7 @@ export function createObjectDBClient(config = {}) {
 
       async create(accessToken, bucket) {
         return requestJSON("PUT", http.storeBaseURL, `/objectdb/v1/buckets/${encodePathPart(bucket)}`, {
-          fetch: http.fetch,
+          fetch: http.storeFetch,
           accessToken,
           errorPrefix: "objectdb request",
         });
@@ -31,7 +31,7 @@ export function createObjectDBClient(config = {}) {
 
       async exists(accessToken, bucket) {
         const result = await requestJSON("GET", http.storeBaseURL, "/objectdb/v1/buckets", {
-          fetch: http.fetch,
+          fetch: http.storeFetch,
           accessToken,
           errorPrefix: "objectdb request",
         });
@@ -41,7 +41,7 @@ export function createObjectDBClient(config = {}) {
 
       async delete(accessToken, bucket) {
         return requestJSON("DELETE", http.storeBaseURL, `/objectdb/v1/buckets/${encodePathPart(bucket)}`, {
-          fetch: http.fetch,
+          fetch: http.storeFetch,
           accessToken,
           errorPrefix: "objectdb request",
         });
@@ -51,7 +51,7 @@ export function createObjectDBClient(config = {}) {
     keys: {
       async list(accessToken, bucket, options = {}) {
         return requestJSON("GET", http.storeBaseURL, `/objectdb/v1/buckets/${encodePathPart(bucket)}/keys`, {
-          fetch: http.fetch,
+          fetch: http.storeFetch,
           accessToken,
           query: listOptions(options),
           errorPrefix: "objectdb request",
@@ -80,7 +80,7 @@ export function createObjectDBClient(config = {}) {
       }
 
       return requestJSON("PUT", http.storeBaseURL, `/objectdb/v1/buckets/${encodePathPart(bucket)}/values/${encodePathPart(key)}`, {
-        fetch: http.fetch,
+        fetch: http.storeFetch,
         accessToken,
         body,
         headers: { "Content-Type": contentType },
@@ -91,7 +91,7 @@ export function createObjectDBClient(config = {}) {
     async get(accessToken, bucket, key, options = {}) {
       const responseType = typeof options.type === "string" ? options.type : "json";
       return requestJSON("GET", http.storeBaseURL, `/objectdb/v1/buckets/${encodePathPart(bucket)}/values/${encodePathPart(key)}`, {
-        fetch: http.fetch,
+        fetch: http.storeFetch,
         accessToken,
         query: responseType ? [["type", responseType]] : [],
         allowNotFound: true,
@@ -102,7 +102,7 @@ export function createObjectDBClient(config = {}) {
 
     async head(accessToken, bucket, key) {
       const listed = await requestJSON("GET", http.storeBaseURL, `/objectdb/v1/buckets/${encodePathPart(bucket)}/keys`, {
-        fetch: http.fetch,
+        fetch: http.storeFetch,
         accessToken,
         query: [["prefix", String(key)], ["limit", "1000"]],
         errorPrefix: "objectdb request",
@@ -116,7 +116,7 @@ export function createObjectDBClient(config = {}) {
 
     async delete(accessToken, bucket, key) {
       return requestJSON("DELETE", http.storeBaseURL, `/objectdb/v1/buckets/${encodePathPart(bucket)}/values/${encodePathPart(key)}`, {
-        fetch: http.fetch,
+        fetch: http.storeFetch,
         accessToken,
         errorPrefix: "objectdb request",
       });

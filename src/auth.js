@@ -6,7 +6,7 @@ export function createAuthClient(config = {}) {
   return {
     async exchangeCLIAuthCode({ code, state, codeVerifier, redirectURI }) {
       return requestJSON("POST", http.authBaseURL, "/auth/cli/exchange", {
-        fetch: http.fetch,
+        fetch: http.authFetch,
         body: JSON.stringify({
           code,
           state,
@@ -20,7 +20,7 @@ export function createAuthClient(config = {}) {
 
     async refresh(refreshToken) {
       return requestJSON("POST", http.authBaseURL, "/auth/refresh", {
-        fetch: http.fetch,
+        fetch: http.authFetch,
         body: JSON.stringify({ refresh_token: refreshToken }),
         headers: { "Content-Type": "application/json" },
         errorPrefix: "auth request",
@@ -29,7 +29,7 @@ export function createAuthClient(config = {}) {
 
     async whoAmI(accessToken) {
       return requestJSON("GET", http.authBaseURL, "/auth/whoami", {
-        fetch: http.fetch,
+        fetch: http.authFetch,
         accessToken,
         errorPrefix: "auth request",
       });
@@ -37,7 +37,7 @@ export function createAuthClient(config = {}) {
 
     async logout(refreshToken) {
       return requestJSON("POST", http.authBaseURL, "/auth/logout", {
-        fetch: http.fetch,
+        fetch: http.authFetch,
         body: JSON.stringify({ refresh_token: refreshToken }),
         headers: { "Content-Type": "application/json" },
         errorPrefix: "auth request",
@@ -50,7 +50,7 @@ export function createAuthClient(config = {}) {
         : "objectdb";
       const rotate = options.rotate === true;
       const response = await requestJSON("POST", http.authBaseURL, "/auth/service-token", {
-        fetch: http.fetch,
+        fetch: http.authFetch,
         accessToken,
         body: JSON.stringify({ service, rotate }),
         headers: { "Content-Type": "application/json" },
@@ -65,7 +65,7 @@ export function createAuthClient(config = {}) {
 
     async serviceTokenWhoAmI(serviceToken) {
       return requestJSON("GET", http.authBaseURL, "/auth/service-token/whoami", {
-        fetch: http.fetch,
+        fetch: http.authFetch,
         accessToken: serviceToken,
         errorPrefix: "auth request",
       });

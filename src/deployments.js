@@ -6,7 +6,7 @@ export function createDeploymentsClient(config = {}) {
   return {
     async create(accessToken, request) {
       return requestJSON("POST", http.storeBaseURL, "/deployments/v1", {
-        fetch: http.fetch,
+        fetch: http.storeFetch,
         accessToken,
         body: JSON.stringify(request),
         headers: { "Content-Type": "application/json" },
@@ -16,7 +16,7 @@ export function createDeploymentsClient(config = {}) {
 
     async list(accessToken) {
       const response = await requestJSON("GET", http.storeBaseURL, "/deployments/v1", {
-        fetch: http.fetch,
+        fetch: http.storeFetch,
         accessToken,
         errorPrefix: "deployments request",
       });
@@ -25,7 +25,7 @@ export function createDeploymentsClient(config = {}) {
 
     async delete(accessToken, deploymentID) {
       return requestJSON("DELETE", http.storeBaseURL, `/deployments/v1/${encodePathPart(deploymentID)}`, {
-        fetch: http.fetch,
+        fetch: http.storeFetch,
         accessToken,
         errorPrefix: "deployments request",
       });

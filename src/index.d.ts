@@ -2,7 +2,11 @@ export interface ClientConfig {
   authBaseURL?: string;
   storeBaseURL?: string;
   fetch?: typeof globalThis.fetch;
+  authFetch?: typeof globalThis.fetch;
+  storeFetch?: typeof globalThis.fetch;
 }
+
+export type DistlangFetcher = (request: Request) => Promise<Response>;
 
 export interface User {
   id?: string;
@@ -165,6 +169,7 @@ export interface DistlangClient {
 }
 
 export declare function createDistlangClient(config?: ClientConfig): DistlangClient;
+export declare function createDistlangClientWithFetcher(fetcher: DistlangFetcher, config?: Omit<ClientConfig, "fetch">): DistlangClient;
 export declare function createAuthClient(config?: ClientConfig): AuthClient;
 export declare function createObjectDBClient(config?: ClientConfig): ObjectDBClient;
 export declare function createMetricsClient(config?: ClientConfig): MetricsClient;

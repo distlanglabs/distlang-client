@@ -1,6 +1,16 @@
 const DEFAULT_AUTH_BASE_URL = "https://auth.distlang.com";
 const DEFAULT_STORE_BASE_URL = "https://api.distlang.com";
 
+export function normalizeRequestFetcher(value, fallback) {
+  if (typeof value === "function") {
+    return value;
+  }
+  if (typeof fallback === "function") {
+    return fallback;
+  }
+  throw new Error("fetcher is required");
+}
+
 export function normalizeBaseURL(value, fallback) {
   const baseURL = String(value || fallback || "").trim().replace(/\/$/, "");
   if (baseURL === "") {
@@ -20,11 +30,23 @@ export function resolveFetch(value) {
 }
 
 export function createHTTPClient(config = {}) {
+  const fetch = resolveFetch(config.fetch);
   return {
     authBaseURL: normalizeBaseURL(config.authBaseURL, DEFAULT_AUTH_BASE_URL),
     storeBaseURL: normalizeBaseURL(config.storeBaseURL, DEFAULT_STORE_BASE_URL),
-    fetch: resolveFetch(config.fetch),
+    fetch,
+    authFetch: normalizeRequestFetcher(config.authFetch, fetch),
+    storeFetch: normalizeRequestFetcher(config.storeFetch, fetch),
   };
+}
+
+export function createHTTPClientWithFetcher(fetcher, config = {}) {
+  return createHTTPClient({
+    ...config,
+    fetch: normalizeRequestFetcher(fetcher, null),
+    authFetch: normalizeRequestFetcher(config.authFetch, fetcher),
+    storeFetch: normalizeRequestFetcher(config.storeFetch, fetcher),
+  });
 }
 
 export function encodePathPart(value) {
