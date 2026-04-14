@@ -143,7 +143,7 @@ npm run release
 
 ```bash
 git add package.json package-lock.json
-git commit -m "release 0.1.3"
+git commit -m "release 0.1.4"
 git push origin main
 ```
 
@@ -156,10 +156,10 @@ npm run publish
 6. Create a GitHub release tag:
 
 ```bash
-gh release create v0.1.3 --title "v0.1.3"
+gh release create v0.1.4 --title "v0.1.4"
 ```
 
-You can swap `0.1.3` for the version you are releasing.
+You can swap `0.1.4` for the version you are releasing.
 
 ### Auth
 
