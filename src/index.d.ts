@@ -108,6 +108,7 @@ export interface MetricsRecorderOptions {
   metricSet: string;
   definitions: Record<string, MetricDefinition>;
   windowMs?: number;
+  autoFlushMs?: number;
 }
 
 export interface MetricsRecorder {

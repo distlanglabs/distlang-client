@@ -92,6 +92,11 @@ export function createMetricsRecorder(metricsClient, options = {}) {
   const windowMs = Number.isFinite(options.windowMs) && options.windowMs > 0
     ? Math.floor(options.windowMs)
     : 1000;
+  const autoFlushMs = typeof options.autoFlushMs === "undefined"
+    ? 1000
+    : Number.isFinite(options.autoFlushMs) && options.autoFlushMs > 0
+      ? Math.floor(options.autoFlushMs)
+      : 0;
 
   const definitions = normalizeMetricDefinitions(options.definitions);
   const state = {
@@ -99,23 +104,18 @@ export function createMetricsRecorder(metricsClient, options = {}) {
     metricSet,
     windowMs,
     definitions,
+    autoFlushMs,
     buffer: new Map(),
     ensureStarted: false,
     ensurePromise: Promise.resolve(),
     flushPromise: Promise.resolve(),
+    flushTimer: null,
   };
 
   const recorder = {
     flush() {
-      state.flushPromise = state.flushPromise.then(async () => {
-        await ensureMetricSet(state, metricsClient);
-        const rows = collectRows(state);
-        if (rows.length === 0) {
-          return;
-        }
-        await metricsClient.metricSets.appendRows(state.accessToken, state.metricSet, rows);
-      });
-      return state.flushPromise;
+      clearScheduledFlush(state);
+      return enqueueFlush(state, metricsClient);
     },
   };
 
@@ -179,6 +179,38 @@ function recordMetric(state, metricsClient, metricName, metricDefinition, value,
   if (metricDefinition.kind === "histogram") {
     entry.values.push(value);
   }
+
+  scheduleFlush(state, metricsClient);
+}
+
+function scheduleFlush(state, metricsClient) {
+  if (state.autoFlushMs <= 0 || state.flushTimer !== null) {
+    return;
+  }
+
+  state.flushTimer = setTimeout(() => {
+    state.flushTimer = null;
+    void enqueueFlush(state, metricsClient);
+  }, state.autoFlushMs);
+}
+
+function clearScheduledFlush(state) {
+  if (state.flushTimer !== null) {
+    clearTimeout(state.flushTimer);
+    state.flushTimer = null;
+  }
+}
+
+function enqueueFlush(state, metricsClient) {
+  state.flushPromise = state.flushPromise.then(async () => {
+    await ensureMetricSet(state, metricsClient);
+    const rows = collectRows(state);
+    if (rows.length === 0) {
+      return;
+    }
+    await metricsClient.metricSets.appendRows(state.accessToken, state.metricSet, rows);
+  });
+  return state.flushPromise;
 }
 
 function ensureMetricSet(state, metricsClient) {

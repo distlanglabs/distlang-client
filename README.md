@@ -55,6 +55,8 @@ metrics.latencyMs.observe(42, { route: "/echo/:text", method: "GET", status: "20
 await metrics.flush();
 ```
 
+The recorder buffers writes in memory and auto-flushes at most once per second by default. Call `await metrics.flush()` when you know the process, request, or worker may exit before the next scheduled flush.
+
 Public docs:
 
 - Store APIs: `https://api.distlang.com/docs`
@@ -224,6 +226,20 @@ await metrics.metricSets.appendRows(accessToken, "simpleapp-metrics", [
     labels: { route: "/", status: "200" },
   },
 ]);
+
+const recorder = metrics.createRecorder({
+  accessToken,
+  metricSet: "simpleapp-metrics",
+  definitions: {
+    requestCount: {
+      kind: "counter",
+      description: "Requests served",
+      unit: "requests",
+      labels: ["route", "status"],
+    },
+  },
+  autoFlushMs: 1000,
+});
 ```
 
 Higher-level app instrumentation:

@@ -17,6 +17,10 @@ function createFetch(handler) {
   return async (request) => handler(request);
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 test("createDistlangClient wires default clients", async () => {
   const seen = [];
   const client = createDistlangClient({
@@ -268,6 +272,110 @@ test("metrics client createRecorder ensures once and flushes aggregated rows", a
 
   await recorder.flush();
   assert.equal(calls.length, 3);
+});
+
+test("metrics recorder auto-flushes buffered rows", async () => {
+  const calls = [];
+  const recorder = createMetricsRecorder({
+    metricSets: {
+      async ensure() {
+        calls.push({ type: "ensure" });
+      },
+      async appendRows(_accessToken, _metricSet, rows) {
+        calls.push({ type: "append", rows });
+      },
+    },
+  }, {
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    autoFlushMs: 20,
+    definitions: {
+      requestCount: {
+        kind: "counter",
+        description: "Requests",
+        unit: "requests",
+        labels: ["route"],
+      },
+    },
+  });
+
+  recorder.requestCount.inc({ route: "/" });
+  recorder.requestCount.inc({ route: "/" });
+  assert.deepEqual(calls, [{ type: "ensure" }]);
+
+  await delay(40);
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].type, "ensure");
+  assert.equal(calls[1].type, "append");
+  assert.equal(calls[1].rows.length, 1);
+  assert.equal(calls[1].rows[0].count, 2);
+  assert.equal(calls[1].rows[0].sum, 2);
+});
+
+test("metrics recorder can disable auto-flush", async () => {
+  const calls = [];
+  const recorder = createMetricsRecorder({
+    metricSets: {
+      async ensure() {
+        calls.push("ensure");
+      },
+      async appendRows() {
+        calls.push("append");
+      },
+    },
+  }, {
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    autoFlushMs: 0,
+    definitions: {
+      requestCount: {
+        kind: "counter",
+        description: "Requests",
+        unit: "requests",
+        labels: [],
+      },
+    },
+  });
+
+  recorder.requestCount.inc();
+  await delay(30);
+  assert.deepEqual(calls, ["ensure"]);
+
+  await recorder.flush();
+  assert.deepEqual(calls, ["ensure", "append"]);
+});
+
+test("metrics recorder explicit flush overrides pending auto-flush", async () => {
+  const calls = [];
+  const recorder = createMetricsRecorder({
+    metricSets: {
+      async ensure() {
+        calls.push("ensure");
+      },
+      async appendRows(_accessToken, _metricSet, rows) {
+        calls.push(`append:${rows.length}`);
+      },
+    },
+  }, {
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    autoFlushMs: 100,
+    definitions: {
+      requestCount: {
+        kind: "counter",
+        description: "Requests",
+        unit: "requests",
+        labels: [],
+      },
+    },
+  });
+
+  recorder.requestCount.inc();
+  await recorder.flush();
+  await delay(130);
+
+  assert.deepEqual(calls, ["ensure", "append:1"]);
 });
 
 test("createDistlangClientWithFetcher recorder flushes through supplied fetcher", async () => {
