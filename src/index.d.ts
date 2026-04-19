@@ -85,6 +85,8 @@ export interface MetricDefinition {
   labels?: string[];
 }
 
+export type MetricDefinitionInput = MetricDefinition | "counter" | "histogram";
+
 export interface MetricRow {
   windowStart: string;
   metric: string;
@@ -106,7 +108,7 @@ export interface HistogramMetricRecorder {
 export interface MetricsRecorderOptions {
   accessToken: string;
   metricSet: string;
-  definitions: Record<string, MetricDefinition>;
+  definitions: Record<string, MetricDefinitionInput>;
   windowMs?: number;
   autoFlushMs?: number;
 }

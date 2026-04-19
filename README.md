@@ -34,28 +34,20 @@ const metrics = client.metrics.createRecorder({
   accessToken: process.env.DISTLANG_ACCESS_TOKEN,
   metricSet: "app-echo-metrics",
   definitions: {
-    requestCount: {
-      kind: "counter",
-      description: "Requests handled",
-      unit: "requests",
-      labels: ["route", "method", "status"],
-    },
-    latencyMs: {
-      kind: "histogram",
-      description: "Request latency",
-      unit: "ms",
-      labels: ["route", "method", "status"],
-    },
+    requestCount: "counter",
+    latencyMs: "histogram",
   },
 });
 
-metrics.requestCount.inc({ route: "/echo/:text", method: "GET", status: "200" });
-metrics.latencyMs.observe(42, { route: "/echo/:text", method: "GET", status: "200" });
+metrics.requestCount.inc();
+metrics.latencyMs.observe(42);
 
 await metrics.flush();
 ```
 
 The recorder buffers writes in memory and auto-flushes at most once per second by default. Call `await metrics.flush()` when you know the process, request, or worker may exit before the next scheduled flush.
+
+Start with scalar metrics by default. Labeled metrics are best reserved for low-cardinality dimensions such as `status`, `result`, or `operation`. Avoid high-cardinality labels such as user IDs, request IDs, raw paths, or anything that can grow without bound.
 
 Public docs:
 
@@ -212,7 +204,7 @@ await metrics.metricSets.ensure(accessToken, "simpleapp-metrics", {
     kind: "counter",
     description: "Requests served",
     unit: "requests",
-    labels: ["route", "status"],
+    labels: [],
   },
 });
 
@@ -223,7 +215,6 @@ await metrics.metricSets.appendRows(accessToken, "simpleapp-metrics", [
     kind: "counter",
     count: 1,
     sum: 1,
-    labels: { route: "/", status: "200" },
   },
 ]);
 
@@ -231,15 +222,13 @@ const recorder = metrics.createRecorder({
   accessToken,
   metricSet: "simpleapp-metrics",
   definitions: {
-    requestCount: {
-      kind: "counter",
-      description: "Requests served",
-      unit: "requests",
-      labels: ["route", "status"],
-    },
+    requestCount: "counter",
   },
   autoFlushMs: 1000,
 });
+
+recorder.requestCount.inc();
+await recorder.flush();
 ```
 
 Higher-level app instrumentation:
@@ -249,28 +238,40 @@ const metrics = client.metrics.createRecorder({
   accessToken,
   metricSet: "app-echo-metrics",
   definitions: {
-    echoReqCount: {
-      kind: "counter",
-      description: "Number of echo requests handled",
-      unit: "requests",
-      labels: ["route", "method", "status"],
-    },
-    latencyMs: {
-      kind: "histogram",
-      description: "Echo request latency",
-      unit: "ms",
-      labels: ["route", "method", "status"],
-    },
+    echoReqCount: "counter",
+    latencyMs: "histogram",
   },
 });
 
-metrics.echoReqCount.inc({ route: "/echo/:text", method: "GET", status: "200" });
-metrics.latencyMs.observe(42, { route: "/echo/:text", method: "GET", status: "200" });
+metrics.echoReqCount.inc();
+metrics.latencyMs.observe(42);
 
 await metrics.flush();
 ```
 
 The recorder buffers writes in memory, ensures the metric set lazily on first use, and flushes all buffered rows when you call `flush()`.
+
+Advanced labeled metrics:
+
+```js
+const metrics = client.metrics.createRecorder({
+  accessToken,
+  metricSet: "app-echo-metrics",
+  definitions: {
+    requestCountByStatus: {
+      kind: "counter",
+      description: "Requests by status",
+      unit: "requests",
+      labels: ["status"],
+    },
+  },
+});
+
+metrics.requestCountByStatus.inc({ status: "200" });
+await metrics.flush();
+```
+
+Prefer a small, bounded label set. If a graph would split into too many lines, the metric probably should have stayed scalar.
 
 ### Deployments
 

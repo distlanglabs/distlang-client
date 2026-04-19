@@ -8,8 +8,20 @@ function normalizeMetricDefinitions(definitions) {
     if (typeof metricName !== "string" || metricName.trim() === "") {
       throw new Error("metrics recorder metric names must be non-empty strings");
     }
+    if (typeof rawDefinition === "string") {
+      if (rawDefinition !== "counter" && rawDefinition !== "histogram") {
+        throw new Error(`metrics recorder unsupported metric kind for ${metricName}: ${rawDefinition}`);
+      }
+      normalized[metricName] = {
+        kind: rawDefinition,
+        description: metricName,
+        unit: rawDefinition === "counter" ? "count" : "value",
+        labels: [],
+      };
+      continue;
+    }
     if (!rawDefinition || typeof rawDefinition !== "object" || Array.isArray(rawDefinition)) {
-      throw new Error(`metrics recorder definition for ${metricName} must be an object`);
+      throw new Error(`metrics recorder definition for ${metricName} must be a string or object`);
     }
     if (rawDefinition.kind !== "counter" && rawDefinition.kind !== "histogram") {
       throw new Error(`metrics recorder unsupported metric kind for ${metricName}: ${rawDefinition.kind}`);

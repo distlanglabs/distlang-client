@@ -274,6 +274,44 @@ test("metrics client createRecorder ensures once and flushes aggregated rows", a
   assert.equal(calls.length, 3);
 });
 
+test("metrics client createRecorder accepts scalar shorthand definitions", async () => {
+  const calls = [];
+  const client = createMetricsClient({
+    fetch: createFetch(async (request) => {
+      calls.push({
+        method: request.method,
+        url: request.url,
+        body: request.method === "GET" ? null : await request.text(),
+      });
+      return Response.json({ ok: true });
+    }),
+  });
+
+  const recorder = client.createRecorder({
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    definitions: {
+      requestCount: "counter",
+      latencyMs: "histogram",
+    },
+  });
+
+  recorder.requestCount.inc();
+  recorder.latencyMs.observe(42);
+  await recorder.flush();
+
+  assert.equal(calls.length, 3);
+  assert.equal(calls[1].method, "PUT");
+  assert.equal(
+    calls[1].body,
+    '{"metrics":{"requestCount":{"kind":"counter","description":"requestCount","unit":"count","labels":[]},"latencyMs":{"kind":"histogram","description":"latencyMs","unit":"value","labels":[]}}}',
+  );
+
+  const payload = JSON.parse(calls[2].body);
+  assert.equal(payload.rows.length, 2);
+  assert.deepEqual(payload.rows.map((row) => row.data.metric).sort(), ["latencyMs", "requestCount"]);
+});
+
 test("metrics recorder auto-flushes buffered rows", async () => {
   const calls = [];
   const recorder = createMetricsRecorder({
