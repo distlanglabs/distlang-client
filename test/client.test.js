@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  createAIDebuggerClient,
   createAuthClient,
   createDeploymentsClient,
   createDistlangClient,
@@ -174,6 +175,43 @@ test("metrics client encodes range query and label values", async () => {
   assert.deepEqual(seen, [
     "https://api.example.com/metrics/v1/api/v1/query_range?query=up&start=2026-04-10T00%3A00%3A00Z&end=2026-04-10T01%3A00%3A00Z&step=60s",
     "https://api.example.com/metrics/v1/api/v1/label/job/values?match%5B%5D=up&match%5B%5D=process_start_time_seconds",
+  ]);
+});
+
+test("ai debugger client writes ingest payload and reads sessions", async () => {
+  const seen = [];
+  const aiDebugger = createAIDebuggerClient({
+    storeBaseURL: "https://api.example.com",
+    fetch: createFetch(async (request) => {
+      seen.push({
+        method: request.method,
+        url: request.url,
+        body: request.method === "GET" ? null : await request.text(),
+      });
+      return Response.json({ ok: true });
+    }),
+  });
+
+  await aiDebugger.ingest("access-token", { source: "opencode", project: "dash", session: { id: "ses_123" }, interactions: [] });
+  await aiDebugger.listSessions("access-token", { project: "dash", limit: 10 });
+  await aiDebugger.getSession("access-token", "ses_123");
+
+  assert.deepEqual(seen, [
+    {
+      method: "POST",
+      url: "https://api.example.com/ai-debugger/v1/ingest",
+      body: '{"source":"opencode","project":"dash","session":{"id":"ses_123"},"interactions":[]}',
+    },
+    {
+      method: "GET",
+      url: "https://api.example.com/ai-debugger/v1/sessions?project=dash&limit=10",
+      body: null,
+    },
+    {
+      method: "GET",
+      url: "https://api.example.com/ai-debugger/v1/sessions/ses_123",
+      body: null,
+    },
   ]);
 });
 

@@ -97,6 +97,14 @@ export interface MetricRow {
   values?: number[];
 }
 
+export interface AIDebuggerListSessionsOptions {
+  project?: string;
+  source?: string;
+  status?: string;
+  limit?: number;
+  cursor?: string;
+}
+
 export interface CounterMetricRecorder {
   inc(valueOrLabels?: number | Record<string, string>, maybeLabels?: Record<string, string>): void;
 }
@@ -125,6 +133,12 @@ export interface AuthClient {
   logout(refreshToken: string): Promise<Record<string, unknown>>;
   serviceToken(accessToken: string, options?: ServiceTokenOptions): Promise<ServiceTokenResponse>;
   serviceTokenWhoAmI(serviceToken: string): Promise<Record<string, unknown>>;
+}
+
+export interface AIDebuggerClient {
+  ingest(accessToken: string, payload: Record<string, unknown>): Promise<Record<string, unknown>>;
+  listSessions(accessToken: string, options?: AIDebuggerListSessionsOptions): Promise<Record<string, unknown>>;
+  getSession(accessToken: string, sessionID: string): Promise<Record<string, unknown>>;
 }
 
 export interface ObjectDBClient {
@@ -165,6 +179,7 @@ export interface DeploymentsClient {
 }
 
 export interface DistlangClient {
+  aiDebugger: AIDebuggerClient;
   auth: AuthClient;
   objectdb: ObjectDBClient;
   metrics: MetricsClient;
@@ -173,6 +188,7 @@ export interface DistlangClient {
 
 export declare function createDistlangClient(config?: ClientConfig): DistlangClient;
 export declare function createDistlangClientWithFetcher(fetcher: DistlangFetcher, config?: Omit<ClientConfig, "fetch">): DistlangClient;
+export declare function createAIDebuggerClient(config?: ClientConfig): AIDebuggerClient;
 export declare function createAuthClient(config?: ClientConfig): AuthClient;
 export declare function createObjectDBClient(config?: ClientConfig): ObjectDBClient;
 export declare function createMetricsClient(config?: ClientConfig): MetricsClient;
