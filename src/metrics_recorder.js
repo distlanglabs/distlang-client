@@ -9,7 +9,7 @@ function normalizeMetricDefinitions(definitions) {
       throw new Error("metrics recorder metric names must be non-empty strings");
     }
     if (typeof rawDefinition === "string") {
-      if (rawDefinition !== "counter" && rawDefinition !== "histogram") {
+      if (!isSupportedMetricKind(rawDefinition)) {
         throw new Error(`metrics recorder unsupported metric kind for ${metricName}: ${rawDefinition}`);
       }
       normalized[metricName] = {
@@ -23,7 +23,7 @@ function normalizeMetricDefinitions(definitions) {
     if (!rawDefinition || typeof rawDefinition !== "object" || Array.isArray(rawDefinition)) {
       throw new Error(`metrics recorder definition for ${metricName} must be a string or object`);
     }
-    if (rawDefinition.kind !== "counter" && rawDefinition.kind !== "histogram") {
+    if (!isSupportedMetricKind(rawDefinition.kind)) {
       throw new Error(`metrics recorder unsupported metric kind for ${metricName}: ${rawDefinition.kind}`);
     }
 
@@ -37,6 +37,10 @@ function normalizeMetricDefinitions(definitions) {
     };
   }
   return normalized;
+}
+
+function isSupportedMetricKind(kind) {
+  return kind === "counter" || kind === "histogram" || kind === "gauge";
 }
 
 function normalizeMetricLabels(metricName, metricDefinition, labelsInput) {
@@ -151,6 +155,19 @@ export function createMetricsRecorder(metricsClient, options = {}) {
       continue;
     }
 
+    if (metricDefinition.kind === "gauge") {
+      recorder[metricName] = {
+        set(value, labels = {}) {
+          const amount = Number(value);
+          if (!Number.isFinite(amount)) {
+            throw new Error(`metrics recorder ${metricName}.set value must be a finite number`);
+          }
+          recordMetric(state, metricsClient, metricName, metricDefinition, amount, labels);
+        },
+      };
+      continue;
+    }
+
     recorder[metricName] = {
       observe(value, labels = {}) {
         const amount = Number(value);
@@ -186,8 +203,13 @@ function recordMetric(state, metricsClient, metricName, metricDefinition, value,
     state.buffer.set(bufferKey, entry);
   }
 
-  entry.count += 1;
-  entry.sum += value;
+  if (metricDefinition.kind === "gauge") {
+    entry.count = 1;
+    entry.sum = value;
+  } else {
+    entry.count += 1;
+    entry.sum += value;
+  }
   if (metricDefinition.kind === "histogram") {
     entry.values.push(value);
   }

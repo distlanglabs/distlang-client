@@ -79,18 +79,18 @@ export interface MetadataOptions {
 }
 
 export interface MetricDefinition {
-  kind: "counter" | "histogram";
+  kind: "counter" | "histogram" | "gauge";
   description: string;
   unit: string;
   labels?: string[];
 }
 
-export type MetricDefinitionInput = MetricDefinition | "counter" | "histogram";
+export type MetricDefinitionInput = MetricDefinition | "counter" | "histogram" | "gauge";
 
 export interface MetricRow {
   windowStart: string;
   metric: string;
-  kind: "counter" | "histogram";
+  kind: "counter" | "histogram" | "gauge";
   count: number;
   sum: number;
   labels?: Record<string, string>;
@@ -113,6 +113,10 @@ export interface HistogramMetricRecorder {
   observe(value: number, labels?: Record<string, string>): void;
 }
 
+export interface GaugeMetricRecorder {
+  set(value: number, labels?: Record<string, string>): void;
+}
+
 export interface MetricsRecorderOptions {
   accessToken: string;
   metricSet: string;
@@ -123,7 +127,7 @@ export interface MetricsRecorderOptions {
 
 export interface MetricsRecorder {
   flush(): Promise<void>;
-  [metricName: string]: CounterMetricRecorder | HistogramMetricRecorder | (() => Promise<void>) | unknown;
+  [metricName: string]: CounterMetricRecorder | HistogramMetricRecorder | GaugeMetricRecorder | (() => Promise<void>) | unknown;
 }
 
 export interface AuthClient {

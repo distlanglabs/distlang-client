@@ -10,6 +10,7 @@ const metrics = client.metrics.createRecorder({
   definitions: {
     echoReqCount: "counter",
     echoLatencyMs: "histogram",
+    activeContextTokens: "gauge",
   },
 });
 
@@ -20,6 +21,7 @@ async function handleEchoRequest(work) {
     metrics.echoReqCount.inc();
   } finally {
     metrics.echoLatencyMs.observe(Date.now() - startedAt);
+    metrics.activeContextTokens.set(128000);
     await metrics.flush();
   }
 }

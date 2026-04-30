@@ -331,23 +331,59 @@ test("metrics client createRecorder accepts scalar shorthand definitions", async
     definitions: {
       requestCount: "counter",
       latencyMs: "histogram",
+      activeContexts: "gauge",
     },
   });
 
   recorder.requestCount.inc();
   recorder.latencyMs.observe(42);
+  recorder.activeContexts.set(7);
   await recorder.flush();
 
   assert.equal(calls.length, 3);
   assert.equal(calls[1].method, "PUT");
   assert.equal(
     calls[1].body,
-    '{"metrics":{"requestCount":{"kind":"counter","description":"requestCount","unit":"count","labels":[]},"latencyMs":{"kind":"histogram","description":"latencyMs","unit":"value","labels":[]}}}',
+    '{"metrics":{"requestCount":{"kind":"counter","description":"requestCount","unit":"count","labels":[]},"latencyMs":{"kind":"histogram","description":"latencyMs","unit":"value","labels":[]},"activeContexts":{"kind":"gauge","description":"activeContexts","unit":"value","labels":[]}}}',
   );
 
   const payload = JSON.parse(calls[2].body);
-  assert.equal(payload.rows.length, 2);
-  assert.deepEqual(payload.rows.map((row) => row.data.metric).sort(), ["latencyMs", "requestCount"]);
+  assert.equal(payload.rows.length, 3);
+  assert.deepEqual(payload.rows.map((row) => row.data.metric).sort(), ["activeContexts", "latencyMs", "requestCount"]);
+});
+
+test("metrics recorder keeps latest gauge value per flush window", async () => {
+  const appended = [];
+  const recorder = createMetricsRecorder({
+    metricSets: {
+      async ensure() {},
+      async appendRows(_accessToken, _metricSet, rows) {
+        appended.push(rows);
+      },
+    },
+  }, {
+    accessToken: "access-token",
+    metricSet: "app-echo-metrics",
+    definitions: {
+      activeContexts: {
+        kind: "gauge",
+        description: "Active contexts",
+        unit: "tokens",
+        labels: ["model"],
+      },
+    },
+  });
+
+  recorder.activeContexts.set(42, { model: "gpt-5.5" });
+  recorder.activeContexts.set(18, { model: "gpt-5.5" });
+  await recorder.flush();
+
+  assert.equal(appended.length, 1);
+  assert.equal(appended[0].length, 1);
+  assert.equal(appended[0][0].kind, "gauge");
+  assert.equal(appended[0][0].count, 1);
+  assert.equal(appended[0][0].sum, 18);
+  assert.equal(appended[0][0].values, undefined);
 });
 
 test("metrics recorder auto-flushes buffered rows", async () => {

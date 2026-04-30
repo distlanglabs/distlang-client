@@ -36,11 +36,13 @@ const metrics = client.metrics.createRecorder({
   definitions: {
     requestCount: "counter",
     latencyMs: "histogram",
+    activeContextTokens: "gauge",
   },
 });
 
 metrics.requestCount.inc();
 metrics.latencyMs.observe(42);
+metrics.activeContextTokens.set(128000);
 
 await metrics.flush();
 ```
@@ -206,6 +208,12 @@ await metrics.metricSets.ensure(accessToken, "simpleapp-metrics", {
     unit: "requests",
     labels: [],
   },
+  activeContextTokens: {
+    kind: "gauge",
+    description: "Latest observed context size",
+    unit: "tokens",
+    labels: ["model"],
+  },
 });
 
 await metrics.metricSets.appendRows(accessToken, "simpleapp-metrics", [
@@ -223,11 +231,13 @@ const recorder = metrics.createRecorder({
   metricSet: "simpleapp-metrics",
   definitions: {
     requestCount: "counter",
+    activeContextTokens: "gauge",
   },
   autoFlushMs: 1000,
 });
 
 recorder.requestCount.inc();
+recorder.activeContextTokens.set(128000);
 await recorder.flush();
 ```
 
@@ -240,11 +250,13 @@ const metrics = client.metrics.createRecorder({
   definitions: {
     echoReqCount: "counter",
     latencyMs: "histogram",
+    activeContextTokens: "gauge",
   },
 });
 
 metrics.echoReqCount.inc();
 metrics.latencyMs.observe(42);
+metrics.activeContextTokens.set(128000);
 
 await metrics.flush();
 ```
